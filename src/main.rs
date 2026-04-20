@@ -8,57 +8,70 @@ use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_stm32::spi::{Config, Spi};
 use embassy_stm32::time::Hertz;
 use embassy_time::{Delay, Timer};
-use embedded_graphics::mono_font::ascii::FONT_10X20;
-use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::*;
-use embedded_graphics::text::Text;
-use embedded_hal_bus::spi::ExclusiveDevice;
-use mipidsi::Builder;
-use mipidsi::models::ILI9341Rgb565;
+use embedded_sdmmc::{SdCard, VolumeManager};
 use panic_probe as _;
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
-    info!("Display test pornit");
+    info!("SD card test pornit");
 
     let mut spi_config = Config::default();
     spi_config.frequency = Hertz(1_000_000);
 
-    let spi = Spi::new_blocking_txonly(
-        p.SPI1,
-        p.PA5,
-        p.PA7,
+    let spi = Spi::new_blocking(
+        p.SPI2,
+        p.PB13,
+        p.PB15,
+        p.PB14,
         spi_config,
     );
 
-    let cs = Output::new(p.PA6, Level::High, Speed::High);
-    let dc = Output::new(p.PC7, Level::Low, Speed::High);
-    let rst = Output::new(p.PC6, Level::Low, Speed::High);
+    let cs = Output::new(p.PB5, Level::High, Speed::High);
+    let sdcard = SdCard::new(spi, cs, Delay);
 
-    let spi_dev = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    info!("Initializez SD card...");
 
-    let mut buffer = [0u8; 320];
-    let di = mipidsi::interface::SpiInterface::new(spi_dev, dc, &mut buffer);
+    let mut volume_mgr = VolumeManager::new(sdcard, DummyTimesource);
 
-    let mut delay = Delay;
-    let mut display = Builder::new(ILI9341Rgb565, di)
-        .reset_pin(rst)
-        .orientation(mipidsi::options::Orientation::new().flip_horizontal())
-        .init(&mut delay)
-        .unwrap();
-
-    display.clear(Rgb565::BLACK).unwrap();
-
-    let style = MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE);
-    Text::new("NucleoPod", Point::new(80, 120), style)
-        .draw(&mut display)
-        .unwrap();
-
-    info!("Display initializat");
+    match volume_mgr.open_volume(embedded_sdmmc::VolumeIdx(0)) {
+        Ok(volume) => {
+            info!("Volum deschis!");
+            match volume_mgr.open_root_dir(volume) {
+                Ok(root_dir) => {
+                    info!("Listez fisiere:");
+                    volume_mgr.iterate_dir(root_dir, |entry| {
+                        if !entry.attributes.is_hidden() {
+                            // ShortFileName nu implementeaza Format, convertim la bytes
+                            let name = entry.name.base_name();
+                            info!("  {}", core::str::from_utf8(name).unwrap_or("???"));
+                        }
+                    }).unwrap();
+                    volume_mgr.close_dir(root_dir).unwrap();
+                }
+                Err(_) => info!("Eroare root dir"),
+            }
+            volume_mgr.close_volume(volume).unwrap();
+        }
+        Err(_) => info!("Eroare volum"),
+    }
 
     loop {
         Timer::after_secs(1).await;
+    }
+}
+
+struct DummyTimesource;
+
+impl embedded_sdmmc::TimeSource for DummyTimesource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: 54,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
     }
 }
