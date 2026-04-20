@@ -1,79 +1,40 @@
 #![no_std]
 #![no_main]
 
+use defmt::info;
+use defmt_rtt as _;
+use embedded_hal::Pwm;
 use embassy_executor::Spawner;
-use embassy_stm32::gpio::OutputType;
-use embassy_stm32::time::hz;
 use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
-use embassy_stm32::timer::Ch3;
+use embassy_stm32::timer::Channel;
+use embassy_stm32::time::Hertz;
+use embassy_stm32::gpio::OutputType;
 use embassy_time::Timer;
-use {defmt_rtt as _, panic_probe as _};
-
-const SONG: &[(u32, u64)] = &[
-    (659, 250), (659, 250), (659, 500),
-    (659, 250), (659, 250), (659, 500),
-    (659, 250), (784, 250), (523, 250), (587, 250), (659, 700),
-    (0,   300), // rest
-    (698, 250), (698, 250), (698, 250), (698, 250),
-    (698, 250), (659, 250), (659, 250), (659, 250),
-    (659, 250), (587, 250), (587, 250), (659, 250), (587, 500), (784, 500),
-];
+use panic_probe as _;
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) -> ! {
+async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
+    info!("PWM audio test pornit");
 
-    let buzzer_pin: PwmPin<'_, _, Ch3> = PwmPin::new(p.PB10, OutputType::PushPull);
-
+    let ch1 = PwmPin::new(p.PA0, OutputType::PushPull);
     let mut pwm = SimplePwm::new(
         p.TIM2,
-        None,              // CH1
-        None,              // CH2
-        Some(buzzer_pin),  // CH3
-        None,              // CH4
-        hz(440),           // initial frequency
+        Some(ch1),
+        None,
+        None,
+        None,
+        Hertz(440),
         Default::default(),
     );
 
-    let mut ch = pwm.ch3();
-    ch.enable();
-    ch.set_duty_cycle_percent(40); // loudness
+    let max = pwm.get_max_duty();
+    pwm.set_duty(Channel::Ch1, max / 2);
+    pwm.enable(Channel::Ch1);
+
+    info!("PWM 440Hz pornit pe A0");
 
     loop {
-        for &(freq, dur_ms) in SONG {
-            if freq == 0 {
-                {
-                    let mut ch = pwm.ch3();
-                    ch.disable();
-                }
-
-                Timer::after_millis(dur_ms).await;
-
-                {
-                    let mut ch = pwm.ch3();
-                    ch.enable();
-                    ch.set_duty_cycle_percent(40);
-                }
-            } else {
-                pwm.set_frequency(hz(freq));
-
-                {
-                    let mut ch = pwm.ch3();
-                    ch.enable();
-                    ch.set_duty_cycle_percent(40);
-                }
-
-                Timer::after_millis(dur_ms).await;
-
-                {
-                    let mut ch = pwm.ch3();
-                    ch.disable();
-                }
-
-                Timer::after_millis(25).await;
-            }
-        }
-
-        Timer::after_secs(2).await;
+        Timer::after_secs(1).await;
     }
 }
