@@ -14,25 +14,30 @@ I've wanted an MP3 player for as long as I can remember. As a kid, my cousin had
 
 The plan itself was simple on paper: a screen, a headphone jack, an SD card reader (my stand-in upgrade for the iPod's original spinning HDD), a vibration motor, and a capacitive touch wheel, the kind of "haptic click-wheel" mod that people who still use iPods in 2026 either wish for or add themselves. I started by testing every component in isolation to make sure I understood how each one actually behaved, and only then moved on to getting everything working together in one program. I'll admit the entire firmware still lives in a single `main.rs`, this was my first real project in Rust, and it shows; getting there took a lot of trial, error, and borrow-checker fights I'd rather forget. Once the project came alive and I'd iterated on the UI (how things are laid out on screen, how you navigate between menu and player), it was time to move everything off the breadboard and onto a proper perfboard.
 
-![perfboard](./images/perfboard_7.jpeg)
-![perfboard](./images/perfboard_3.jpeg)
+<!-- ![perfboard](./images/perfboard_7.jpeg)
+![perfboard](./images/perfboard_3.jpeg) -->
+<img src="./images/perfboard_7.jpeg" width="48%" /> <img src="./images/perfboard_3.jpeg" width="48%" />
 
 That's where I learned that wanting a "company-prototype-grade" finish almost cost me the deadline. I soldered every component directly onto the perfboard, ran tin traces for the positive and negative rails by hand, and soldered female headers onto the board so the STM32 Nucleo itself could plug straight into the populated board like a shield. When I powered it on, nothing worked properly: components that should have been getting 3.3V or 5V were reading around 0.3V. I couldn't immediately tell whether I had a short somewhere or whether my hand-soldered +/- traces just weren't conductive enough. Either way, the fix meant redoing the power traces, possibly with a solid copper wire bridging the whole run, and I had less than 48 hours left, having already sunk about 5 hours into soldering and another 3 into planning the component layout.
 
-![perfboard](./images/perfboard_1.jpeg)
-![perfboard](./images/perfboard_2.jpeg)
+<!-- ![perfboard](./images/perfboard_1.jpeg)
+![perfboard](./images/perfboard_2.jpeg) -->
+<img src="./images/perfboard_1.jpeg" width="48%" /> <img src="./images/perfboard_2.jpeg" width="48%" />
 
 I couldn't risk showing up to the presentation with a dead board, so I made the call to tear it apart. This was easily the worst part of the whole project: I tried desoldering components off the perfboard first, which didn't work at all (perfboard solder joints don't come off cleanly without proper desoldering tools), so I ended up cutting the board apart with a hobby knife, slicing as close as I could to each component's pins to salvage the parts themselves. In the process I lost two components for good, the haptic touch sensor and the jack breakout board (a DAC module I'd actually bought by mistake, since the STM32U545RE doesn't expose I2S pins on the Nucleo-64; I ended up using it purely as a 3.5mm jack breakout, not for its DAC). My hands didn't come out unscathed either, a lot of small cuts and irritated skin from the blade work, but stopping wasn't really an option after everything I'd already put into it, and it was a project I genuinely wanted to see working.
 
 ![perfboard](./images/perfboard_4.jpeg)
 ![perfboard](./images/perfboard_5.jpeg)
+<img src="./images/perfboard_4.jpeg" width="48%" /> <img src="./images/perfboard_5.jpeg" width="48%" />
 
 So I gathered the board and components and put everything back on a breadboard, for the third time. The plan shifted again: instead of the perfboard build (and the 3D-printed case I'd originally designed for it, which no longer fit once I gave up on the perfboard layout), I bought a small mini-breadboard, transplanted every component onto it, and built an enclosure out of a plain plastic box. I drilled the cutouts with a soldering iron tip heated on the stove, spray-painted the box out on the balcony, bolted the STM32 board directly to the enclosure with screws, and routed the whole wiring harness inside. I re-tested continuously through this process to make sure nothing had come loose or gotten miswired along the way. In the end, it worked, smoothly, with no leftover bugs, and I was genuinely excited to demo it to anyone curious enough to ask, classmates and professors alike.
 
 <!-- [▶️ Video](./images/video_functioneaza.mp4) -->
 
-![black_box](./images/black_box.jpeg)
-![perfboard](./images/perfboard_6.jpeg)
+<!-- ![black_box](./images/black_box.jpeg)
+![perfboard](./images/perfboard_6.jpeg -->
+
+<img src="./images/black_box.jpeg" width="48%" /> <img src="./images/perfboard_6.jpeg" width="48%" />
 
 Still, there's a small gap I feel about it: the final shape only I ever really saw in my head, the 3D-printed enclosure I'd originally designed never made it onto the finished device. That said, I'm proud of what actually shipped, and I still intend to build the version I originally imagined.
 
